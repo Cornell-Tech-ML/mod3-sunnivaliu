@@ -44,7 +44,6 @@ class ScalarHistory:
 
 # ## Task 1.2 and 1.4
 # Scalar Forward and Backward
-
 _var_count = 0
 
 
@@ -85,13 +84,17 @@ class Scalar:
     def __bool__(self) -> bool:
         return bool(self.data)
 
-    def __radd__(self, b: ScalarLike) -> Scalar:
-        return self + b
+    def __radd__(self, b: ScalarLike) -> Scalar:  # changed from Scalar
+        return Add.apply(self, b)
 
     def __rmul__(self, b: ScalarLike) -> Scalar:
         return self * b
 
     # Variable elements for backprop
+
+    # For 1.4 DFS
+    def __hash__(self):
+        return hash(self.unique_id)
 
     def accumulate_derivative(self, x: Any) -> None:
         """Add `val` to the the derivative accumulated on this variable.
@@ -112,21 +115,30 @@ class Scalar:
         return self.history is not None and self.history.last_fn is None
 
     def is_constant(self) -> bool:
+        """is_constant function"""
         return self.history is None
 
     @property
     def parents(self) -> Iterable[Variable]:
-        """Get the variables used to create this one."""
+        """Parents function"""
         assert self.history is not None
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Chain_rule function, return a list of func with derivatives"""
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
 
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.3.
+        if self.is_constant():
+            return []
+        local_gradients = h.last_fn._backward(h.ctx, d_output)
+        return [
+            (parent, local_gradient)
+            for parent, local_gradient in zip(self.parents, local_gradients)
+        ]
 
     def backward(self, d_output: Optional[float] = None) -> None:
         """Calls autodiff to fill in the derivatives for the history of this object.
@@ -141,22 +153,60 @@ class Scalar:
             d_output = 1.0
         backpropagate(self, d_output)
 
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 1.2.
+
+    def __lt__(self, b: float) -> ScalarLike:
+        """Get less_than"""
+        return LT.apply(self, b)
+
+    def __gt__(self, b: float) -> ScalarLike:
+        """Get greater_than"""
+        return LT.apply(b, self)
+
+    def __sub__(self, b: float) -> ScalarLike:
+        """Get subtract"""
+        return Add.apply(self, Neg.apply(b))
+
+    def __neg__(self) -> ScalarLike:
+        """Get negation"""
+        return Neg.apply(self)
+
+    def __add__(self, b: float) -> ScalarLike:
+        """Get plus"""
+        return Add.apply(self, b)
+
+    def log(self) -> ScalarLike:
+        """Get log"""
+        return Log.apply(self)
+
+    def exp(self) -> ScalarLike:
+        """Get exp"""
+        return Exp.apply(self)
+
+    def sigmoid(self) -> ScalarLike:
+        """Get sigmoid"""
+        return Sigmoid.apply(self)
+
+    def relu(self) -> ScalarLike:
+        """Get relu"""
+        return ReLU.apply(self)
+
+    def __eq__(self, b: float) -> ScalarLike:
+        """Get eq"""
+        return EQ.apply(self, b)
+
+    # raise NotImplementedError("Need to implement for Task 1.2")
 
 
 def derivative_check(f: Any, *scalars: Scalar) -> None:
-    """Checks that autodiff works on a python function.
-    Asserts False if derivative is incorrect.
-
-    Parameters
-    ----------
-        f : function from n-scalars to 1-scalar.
-        *scalars  : n input scalar values.
-
-    """
+    """Checks that autodiff works on a python function."""
+    # Asserts False if derivative is incorrect.
+    # Parameters
+    # ----------
+    #     f : function from n-scalars to 1-scalar.
+    #     *scalars  : n input scalar values.
     out = f(*scalars)
     out.backward()
-
     err_msg = """
 Derivative check at arguments f(%s) and received derivative f'=%f for argument %d,
 but was expecting derivative f'=%f from central difference."""
