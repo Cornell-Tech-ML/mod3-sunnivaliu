@@ -7,16 +7,16 @@ from typing_extensions import Protocol
 
 from . import operators
 from .tensor_data import (
-    MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
     to_index,
+    OutIndex,
 )
 
 if TYPE_CHECKING:
     from .tensor import Tensor
-    from .tensor_data import Index, Shape, Storage, Strides
+    from .tensor_data import Shape, Storage, Strides
 
 
 class MapProto(Protocol):
@@ -41,7 +41,9 @@ class TensorOps:
     @staticmethod
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
-    ) -> Callable[[Tensor, int], Tensor]: ...
+    ) -> Callable[[Tensor, int], Tensor]:
+        """Reduce placeholder"""
+        ...
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
@@ -57,10 +59,12 @@ class TensorBackend:
         that implements map, zip, and reduce higher-order functions.
 
         Args:
+        ----
             ops : tensor operations object see `tensor_ops.py`
 
 
         Returns:
+        -------
             A collection of tensor functions
 
         """
@@ -112,12 +116,14 @@ class SimpleOps(TensorOps):
                     out[i, j] = fn(a[i, 0])
 
         Args:
+        ----
             fn: function from float-to-float to apply.
             a (:class:`TensorData`): tensor to map over
             out (:class:`TensorData`): optional, tensor data to fill in,
                    should broadcast with `a`
 
         Returns:
+        -------
             new tensor data
 
         """
@@ -154,11 +160,13 @@ class SimpleOps(TensorOps):
 
 
         Args:
+        ----
             fn: function from two floats-to-float to apply
             a (:class:`TensorData`): tensor to zip over
             b (:class:`TensorData`): tensor to zip over
 
         Returns:
+        -------
             :class:`TensorData` : new tensor data
 
         """
@@ -192,12 +200,14 @@ class SimpleOps(TensorOps):
                     out[1, j] = fn(out[1, j], a[i, j])
 
 
-        Args:
+        Args::
+        ----
             fn: function from two floats-to-float to apply
             a (:class:`TensorData`): tensor to reduce over
             dim (int): int of dim to reduce
 
-        Returns:
+        Returns::
+        -------
             :class:`TensorData` : new tensor
 
         """
@@ -206,11 +216,8 @@ class SimpleOps(TensorOps):
         def ret(a: "Tensor", dim: int) -> "Tensor":
             out_shape = list(a.shape)
             out_shape[dim] = 1
-
-            # Other values when not sum.
             out = a.zeros(tuple(out_shape))
             out._tensor._storage[:] = start
-
             f(*out.tuple(), *a.tuple(), dim)
             return out
 
@@ -246,12 +253,19 @@ def tensor_map(
       broadcast. (`in_shape` must be smaller than `out_shape`).
 
     Args:
+    ----
         fn: function from float-to-float to apply
 
     Returns:
+    -------
         Tensor map function.
 
     """
+    # Helpler:
+    # broadcast_index,
+    # index_to_position,
+    # shape_broadcast,
+    # to_index,
 
     def _map(
         out: Storage,
@@ -261,7 +275,20 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 2.3.
+
+        # Track index for in and out tensor
+        out_index: OutIndex = np.array([0] * len(out_shape), dtype=np.int32)
+        in_index: OutIndex = np.array([0] * len(in_shape), dtype=np.int32)
+
+        for i in range(len(out)):
+            to_index(i, out_shape, out_index)
+            broadcast_index(
+                out_index, out_shape, in_shape, in_index
+            )  # in must be smaller than out
+            element = in_storage[index_to_position(in_index, in_strides)]
+            out_i = index_to_position(out_index, out_strides)
+            out[out_i] = fn(element)
 
     return _map
 
@@ -287,9 +314,11 @@ def tensor_zip(
       and `b_shape` broadcast to `out_shape`.
 
     Args:
+    ----
         fn: function mapping two floats to float to apply
 
     Returns:
+    -------
         Tensor zip function.
 
     """
@@ -305,7 +334,25 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 2.3.
+        out_index: OutIndex = np.array([0] * len(out_shape), dtype=np.int32)
+        a_in_index: OutIndex = np.array([0] * len(a_shape), dtype=np.int32)
+        b_in_index: OutIndex = np.array([0] * len(b_shape), dtype=np.int32)
+
+        for i in range(len(out)):
+            to_index(i, out_shape, out_index)
+            broadcast_index(
+                out_index, out_shape, a_shape, a_in_index
+            )  # in must be smaller than out
+            broadcast_index(
+                out_index, out_shape, b_shape, b_in_index
+            )  # in must be smaller than out
+            element_a = a_storage[index_to_position(a_in_index, a_strides)]
+            element_b = b_storage[index_to_position(b_in_index, b_strides)]
+            out_i = index_to_position(out_index, out_strides)
+            out[out_i] = fn(element_a, element_b)
+
+        # raise NotImplementedError("Need to implement for Task 2.3")
 
     return _zip
 
@@ -319,9 +366,11 @@ def tensor_reduce(
        except with `reduce_dim` turned to size `1`
 
     Args:
+    ----
         fn: reduction function mapping two floats to float
 
     Returns:
+    -------
         Tensor reduce function.
 
     """
@@ -335,7 +384,40 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 2.3.
+
+        reduce_size = a_shape[reduce_dim]
+        out_index: OutIndex = np.array([0] * len(out_shape), dtype=np.int32)
+        base_index: OutIndex = np.array([0] * len(a_shape), dtype=np.int32)
+        for i in range(len(out)):
+            # flat index to multi-dimensional
+            to_index(i, out_shape, out_index)
+            out_position = index_to_position(out_index, out_strides)
+            broadcast_index(out_index, out_shape, a_shape, base_index)
+            base_position = index_to_position(base_index, a_strides)
+            reduced = a_storage[base_position]
+            for j in range(1, reduce_size):
+                base_index[reduce_dim] = j
+                next_position = index_to_position(base_index, a_strides)
+                reduced = fn(reduced, a_storage[next_position])  # copy output to input
+            out[out_position] = reduced
+        # out_index: OutIndex = np.array([0] * len(out_shape), dtype=np.int32)
+        # in_index: OutIndex = np.array([0] * len(a_shape), dtype=np.int32)
+        # out_size = np.prod(out_shape)
+        # for i in range(out_size):
+        #     # flat index to multi-dimensional
+        #     to_index(i, out_shape, out_index)
+        #     out_i = index_to_position(out_index, out_strides)
+        #     out[out_i] = None
+        #     for j in range(a_shape[reduce_dim]):
+        #         in_index[:] = out_index[:] # copy output to input
+        #         in_index[reduce_dim] = j
+        #         in_pos = index_to_position(in_index, a_strides)
+        #         if out[out_i] is None:
+        #             out[out_i] = a_storage[in_pos]  #init value
+        #         else:
+        #             out[out_i] = fn(out[out_i], a_storage[in_pos])  #reduction function
+        #     # raise NotImplementedError("Need to implement for Task 2.3")
 
     return _reduce
 

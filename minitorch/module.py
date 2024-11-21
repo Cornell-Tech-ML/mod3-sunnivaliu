@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Sequence, Tuple
 
+# coded with the help of ai tools
+
 
 class Module:
     """Modules form a tree that store parameters and other
@@ -31,11 +33,25 @@ class Module:
 
     def train(self) -> None:
         """Set the mode of this module and all descendent modules to `train`."""
-        raise NotImplementedError("Need to include this file from past assignment.")
+
+        # TODO: Implement for Task 0.4.
+        def descendant_train(module: Module) -> None:
+            module.training = True
+            for _, sub_module in module._modules.items():
+                descendant_train(sub_module)
+
+        descendant_train(self)
 
     def eval(self) -> None:
         """Set the mode of this module and all descendent modules to `eval`."""
-        raise NotImplementedError("Need to include this file from past assignment.")
+
+        # TODO: Implement for Task 0.4.
+        def descendant_eval(module: Module) -> None:
+            module.training = False
+            for _, sub_module in module._modules.items():
+                descendant_eval(sub_module)
+
+        descendant_eval(self)
 
     def named_parameters(self) -> Sequence[Tuple[str, Parameter]]:
         """Collect all the parameters of this module and its descendents.
@@ -45,11 +61,50 @@ class Module:
             The name and `Parameter` of each ancestor parameter.
 
         """
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 0.4.
+
+        params = []
+
+        def named_parameters_recursive(
+            params: list, module: Module, prefix: str = ""
+        ) -> None:
+            # Collect parameters from the current module
+            for name, param in module._parameters.items():
+                params.append((f"{prefix}{name}", param))
+            for module_name, sub_module in module._modules.items():
+                new_prefix = f"{prefix}{module_name}." if prefix else f"{module_name}."
+                named_parameters_recursive(params, sub_module, new_prefix)
+
+        named_parameters_recursive(params, self)
+        return params
 
     def parameters(self) -> Sequence[Parameter]:
         """Enumerate over all the parameters of this module and its descendents."""
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 0.4.
+
+        # params = []
+        # def named_parameters_recursive(
+        #     params: list, module: Module, prefix: str = ""
+        # ) -> None:
+        #     # Collect parameters from the current module
+        #     for name, param in module._parameters.items():
+        #         params.append((f"{prefix}{name}", param))
+        #     for module_name, sub_module in module._modules.items():
+        #         new_prefix = f"{prefix}{module_name}." if prefix else f"{module_name}."
+        #         named_parameters_recursive(params, sub_module, new_prefix)
+        # named_parameters_recursive(params, self)
+        # return params
+
+        params = []
+
+        def named_parameters_recursive(params: list, module: Module) -> None:
+            for param in module._parameters.values():
+                params.append(param)
+            for sub_module in module._modules.values():
+                named_parameters_recursive(params, sub_module)
+
+        named_parameters_recursive(params, self)
+        return params
 
     def add_parameter(self, k: str, v: Any) -> Parameter:
         """Manually add a parameter. Useful helper for scalar parameters.
@@ -85,6 +140,12 @@ class Module:
         return None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Call args
+
+        Args: args
+
+        Returns:Any
+        """
         return self.forward(*args, **kwargs)
 
     def __repr__(self) -> str:

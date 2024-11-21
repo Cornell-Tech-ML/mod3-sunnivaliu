@@ -1,3 +1,5 @@
+# type:ignore
+
 import graph_builder
 import networkx as nx
 import plotly.graph_objects as go

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Tuple, Protocol
+from typing import Any, Iterable, Tuple, Protocol
 
+
+# from __future__ import annotations
+# from dataclasses import dataclass
+# from msvcrt import LK_LOCK
+# from re import L
+# from typing import Any, Iterable, List, Tuple, Protocol
+# from networkx import is_empty
 
 # ## Task 1.1
-# Central Difference calculation
+# Central Difference calculations
 
 
 def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) -> Any:
@@ -25,26 +32,42 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 1.1.
+
+    vals_plus = [v + epsilon if i == arg else v for i, v in enumerate(vals)]
+    vals_minus = [v - epsilon if i == arg else v for i, v in enumerate(vals)]
+    return (f(*vals_plus) - f(*vals_minus)) / (2.0 * epsilon)  # add pointer
 
 
 variable_count = 1
 
 
 class Variable(Protocol):
-    def accumulate_derivative(self, x: Any) -> None: ...
+    def accumulate_derivative(self, x: Any) -> None:
+        """Accumulate_derivative"""
+        ...
 
     @property
-    def unique_id(self) -> int: ...
+    def unique_id(self) -> int:
+        """Unique_id"""
+        ...
 
-    def is_leaf(self) -> bool: ...
+    def is_leaf(self) -> bool:
+        """Is_leaf"""
+        ...
 
-    def is_constant(self) -> bool: ...
+    def is_constant(self) -> bool:
+        """Is_constant"""
+        ...
 
     @property
-    def parents(self) -> Iterable["Variable"]: ...
+    def parents(self) -> Iterable["Variable"]:
+        """Parents"""
+        ...
 
-    def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]: ...
+    def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Chain_rule"""
+        ...
 
 
 def topological_sort(variable: Variable) -> Iterable[Variable]:
@@ -59,22 +82,49 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
         Non-constant Variables in topological order starting from the right.
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    topo_order = []
+    visited = set()
+
+    def visit(v: Variable) -> None:
+        if v.unique_id in visited or v.is_constant():
+            return
+        if not v.is_leaf():
+            for parent in v.parents:
+                if not parent.is_constant():
+                    visit(parent)
+        visited.add(v.unique_id)
+        topo_order.append(v)
+
+    visit(variable)
+    return reversed(topo_order)
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
-    """Runs backpropagation on the computation graph in order to
-    compute derivatives for the leave nodes.
+    """Runs backpropagation on the computation graph to compute derivatives for the leaf nodes.
 
     Args:
     ----
-        variable: The right-most variable
-        deriv  : Its derivative that we want to propagate backward to the leaves.
+    variable: The right-most variable.
+    deriv: The derivative we want to propagate backward to the leaves.
 
-    No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
+    Returns:
+    -------
+    None: Updates the derivative values of each leaf through accumulate_derivative`.
 
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    derivs = {variable.unique_id: deriv}
+    for v in topological_sort(variable):
+        if v.is_leaf():
+            v.accumulate_derivative(derivs[v.unique_id])
+        else:
+            for parent, d in v.chain_rule(derivs[v.unique_id]):
+                if parent.is_constant():
+                    continue
+                derivs.setdefault(parent.unique_id, 0.0)
+                derivs[parent.unique_id] += d
+
+
+### only leaf Scalars should ever have non-None .derivative value. All intermediate Scalars should only keep their current derivative values in the dictionary.
 
 
 @dataclass
@@ -92,4 +142,5 @@ class Context:
 
     @property
     def saved_tensors(self) -> Tuple[Any, ...]:
+        """Saved_tensors"""
         return self.saved_values

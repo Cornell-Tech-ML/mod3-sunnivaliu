@@ -1,24 +1,26 @@
+# type: ignore
+
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 from project.interface.streamlit_utils import render_function
-from show_tensor import tensor_figure
+from show_tensor import tensor_figure # type: ignore # type: ignore
 
 from minitorch import SimpleBackend, Tensor, index_to_position, operators, to_index
 from minitorch.tensor_data import TensorData
 
 
-def st_select_index(tensor_shape, n_cols=3):
+def st_select_index(tensor_shape, n_cols=3): # type: ignore # type: ignore
     out_index = [0] * len(tensor_shape)
     cols = st.columns(n_cols)
     for idx, dim in enumerate(tensor_shape):
-        out_index[idx] = cols[idx % n_cols].number_input(
+        out_index[idx] = cols[idx % n_cols].number_input( # type: ignore # type: ignore
             f"Dimension {idx} index:", value=0, min_value=0, max_value=dim - 1
         )
     return out_index
 
 
-def st_visualize_storage(tensor: Tensor, selected_position: int, max_size=10):
+def st_visualize_storage(tensor: Tensor, selected_position: int, max_size=10): # type: ignore
     tensor_size = len(tensor._tensor._storage)
     if tensor_size > max_size:
         st.warning(f"Showing first {max_size} elements from the tensor storage.")
@@ -40,7 +42,7 @@ def st_visualize_storage(tensor: Tensor, selected_position: int, max_size=10):
             text=tensor._tensor._storage[:max_size],
             textposition="middle center",
             textfont_size=20,
-        )
+        ) # type: ignore
     ]
 
     lr_margin = 25 if len(x) >= 9 else 75 if len(x) >= 6 else 175
@@ -57,14 +59,14 @@ def st_visualize_storage(tensor: Tensor, selected_position: int, max_size=10):
         height=125,
         showlegend=False,
         margin=dict(l=lr_margin, r=lr_margin, t=0, b=0),
-    )
+    ) # type: ignore # type: ignore
 
-    fig = go.Figure(data=data, layout=layout)
+    fig = go.Figure(data=data, layout=layout) # type: ignore
     st.write(fig)
 
 
 def st_visualize_tensor(
-    tensor: Tensor, highlighted_index, strides=None, show_value=True
+    tensor: Tensor, highlighted_index, strides=None, show_value=True # type: ignore
 ):
     depth = tensor.shape[0]
     rows = tensor.shape[1] if len(tensor.shape) > 1 else 1
@@ -124,10 +126,10 @@ def interface_visualize_tensor(tensor: Tensor, hide_function_defs: bool):
         "Selected position in storage", 0, len(tensor._tensor._storage) - 1, value=0
     )
     out_index = [0] * len(tensor.shape)
-    to_index(selected_position, tensor.shape, out_index)
+    to_index(selected_position, tensor.shape, out_index) # type: ignore # type: ignore
     st.write(f"**Corresponding index:** {out_index}")
     st_visualize_tensor(tensor, out_index, show_value=False)
-    st_visualize_storage(tensor, selected_position)
+    st_visualize_storage(tensor, selected_position) # type: ignore # type: ignore
 
 
 def interface_index_to_position(tensor: Tensor, hide_function_defs: bool):
@@ -159,7 +161,7 @@ def interface_to_index(tensor: Tensor, hide_function_defs: bool):
         max_value=len(tensor._tensor._storage) - 1,
     )
     out_index = [0] * len(tensor_shape)
-    to_index(selected_position, tensor_shape, out_index)
+    to_index(selected_position, tensor_shape, out_index) # type: ignore
     st.write(
         f"**Value at position {selected_position}:** {tensor._tensor._storage[selected_position]}"
     )

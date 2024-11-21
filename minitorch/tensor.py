@@ -30,7 +30,6 @@ from .tensor_functions import (
     Sigmoid,
     Sum,
     View,
-    tensor,
 )
 
 if TYPE_CHECKING:
@@ -95,9 +94,11 @@ class Tensor:
         self.f = backend
 
     def requires_grad_(self, x: bool) -> None:
+        """Docstring"""
         self.history = History()
 
     def requires_grad(self) -> bool:
+        """Docstring"""
         return self.history is not None
 
     def to_numpy(self) -> npt.NDArray[np.float64]:
@@ -194,6 +195,8 @@ class Tensor:
         # END CODE CHANGE (2021)
 
     def zeros(self, shape: Optional[UserShape] = None) -> Tensor:
+        """Get zeros"""
+
         def zero(shape: UserShape) -> Tensor:
             return Tensor.make(
                 [0.0] * int(operators.prod(shape)), shape, backend=self.backend
@@ -239,14 +242,17 @@ class Tensor:
         return self.history is not None and self.history.last_fn is None
 
     def is_constant(self) -> bool:
+        """Docstring"""
         return self.history is None
 
     @property
     def parents(self) -> Iterable[Variable]:
+        """Docstring"""
         assert self.history is not None
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Docstring"""
         h = self.history
         assert h is not None
         assert h.last_fn is not None
@@ -260,6 +266,7 @@ class Tensor:
         ]
 
     def backward(self, grad_output: Optional[Tensor] = None) -> None:
+        """Docstring"""
         if grad_output is None:
             assert self.shape == (1,), "Must provide grad_output if non-scalar"
             grad_output = Tensor.make([1.0], (1,), backend=self.backend)
@@ -284,4 +291,111 @@ class Tensor:
         return self._tensor.shape
 
     # Functions
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 2.3.
+
+    @property
+    def size(self) -> int:
+        """Get element amount in tensor"""
+        return int(operators.prod([s for s in self.shape]))
+
+    @property
+    def dims(self) -> int:
+        """Get element amount in tensor"""
+        return len(self._tensor.shape)
+
+    def __add__(self, b: TensorLike) -> Tensor:
+        """Get plus"""
+        return Add.apply(self, self._ensure_tensor(b))
+
+    def __sub__(self, b: TensorLike) -> Tensor:
+        """Get subtract"""
+        return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
+
+    def __mul__(self, b: TensorLike) -> Tensor:
+        return Mul.apply(self, self._ensure_tensor(b))
+
+    def __lt__(self, b: TensorLike) -> Tensor:
+        """Get less_than"""
+        return LT.apply(self, self._ensure_tensor(b))
+
+    def __gt__(self, b: TensorLike) -> Tensor:
+        """Get greater_than"""
+        return LT.apply(self._ensure_tensor(b), self)
+
+    def __eq__(self, b: TensorLike) -> Tensor:
+        """Get eq"""
+        return EQ.apply(self, self._ensure_tensor(b))
+
+    def __neg__(self) -> Tensor:
+        """Get negation"""
+        return Neg.apply(self)
+
+    def __radd__(self, b: TensorLike) -> Tensor:  # changed from Scalar
+        return Add.apply(self, self._ensure_tensor(b))
+
+    def __rmul__(self, b: TensorLike) -> Tensor:
+        return self * b
+
+    def log(self) -> Tensor:
+        """Get log"""
+        return Log.apply(self)
+
+    def exp(self) -> Tensor:
+        """Get exp"""
+        return Exp.apply(self)
+
+    def sigmoid(self) -> Tensor:
+        """Get sigmoid"""
+        return Sigmoid.apply(self)
+
+    def relu(self) -> Tensor:
+        """Get relu"""
+        return ReLU.apply(self)
+
+    def all(self, dim: Optional[int] = None) -> Tensor:
+        """Get all"""
+        if dim is None:
+            return All.apply(self)
+        else:
+            return All.apply(self, self._ensure_tensor(dim))
+
+    def is_close(self, b: TensorLike) -> Tensor:
+        """Get isclose"""
+        return IsClose.apply(self, self._ensure_tensor(b))
+
+    def sum(self, dim: Optional[Union[int, Tensor]] = None) -> Tensor:
+        """Get sum"""
+        if dim is not None:
+            return Sum.apply(self, self._ensure_tensor(dim))
+        else:
+            return Sum.apply(
+                self.contiguous().view(int(operators.prod(self.shape))),
+                self._ensure_tensor(0),
+            )  # self.size), self._ensure_tensor(0)
+
+    def mean(self, dim: Optional[int] = None) -> Tensor:
+        """Get mean"""
+        if dim is not None:
+            return Sum.apply(self, self._ensure_tensor(dim)) / self._ensure_tensor(
+                self.shape[dim]
+            )
+        else:
+            return Sum.apply(self) / self.size
+
+    def permute(self, *dims: int) -> Tensor:
+        """Get permute"""
+        return Permute.apply(
+            self,
+            Tensor.make([float(d) for d in dims], (len(dims),), backend=self.backend),
+        )
+
+    def view(self, *shape: int) -> Tensor:
+        """Get view"""
+        return View.apply(
+            self,
+            Tensor.make([float(s) for s in shape], (len(shape),), backend=self.backend),
+        )
+
+    def zero_grad_(self) -> None:
+        """Get zero gradient"""
+        self.grad = None

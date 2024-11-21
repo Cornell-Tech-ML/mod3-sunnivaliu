@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
@@ -66,21 +66,25 @@ class Function:
 class Neg(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
         return t1.f.neg_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
         return grad_output.f.neg_map(grad_output)
 
 
 class Inv(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
         ctx.save_for_backward(t1)
         return t1.f.inv_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
         (t1,) = ctx.saved_values
         return grad_output.f.inv_back_zip(t1, grad_output)
 
@@ -88,42 +92,215 @@ class Inv(Function):
 class Add(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Docstring"""
         return t1.f.add_zip(t1, t2)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Docstring"""
         return grad_output, grad_output
 
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
         if dim is not None:
             return a.f.mul_reduce(a, int(dim.item()))
         else:
-            return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
+            return a.f.mul_reduce(a.contiguous().view(int(a.size)), 0)
 
 
+# TODO: Implement for Task 2.3.
+
+# Mul
+# Sigmoid
+# ReLU
+# Log
+# Exp
+# Sum (with dim arg)
+# LT
+# EQ
+# IsClose (no backward)
+# Permute
+
+
+class Mul(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1, t2)
+        return t1.f.mul_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Docstring"""
+        t1, t2 = ctx.saved_values
+        return t2.f.mul_zip(t2, grad_output), t1.f.mul_zip(t1, grad_output)
+
+
+class Sigmoid(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
+        forward_t1 = t1.f.sigmoid_map(t1)
+        ctx.save_for_backward(forward_t1)
+        return forward_t1
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
+        (s,) = ctx.saved_values
+        one = minitorch.Tensor.make([1.0], (1,), backend=s.backend)
+        return s.f.mul_zip(
+            s.f.mul_zip(s, s.f.add_zip(one, s.f.neg_map(s))), grad_output
+        )
+
+
+class ReLU(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1)
+        return t1.f.relu_map(t1)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
+        (t1,) = ctx.saved_values
+        return t1.f.relu_back_zip(t1, grad_output)
+
+
+class Log(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1)
+        return t1.f.log_map(t1)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
+        (t1,) = ctx.saved_values
+        return t1.f.log_back_zip(t1, grad_output)
+
+
+class Exp(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1)
+        return t1.f.exp_map(t1)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Docstring"""
+        (t1,) = ctx.saved_values
+        return t1.f.mul_zip(t1.f.exp_map(t1), grad_output)
+
+
+class Sum(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1.shape, dim)
+        if dim is not None:
+            return t1.f.add_reduce(t1, int(dim.item()))
+        else:
+            return t1.f.add_reduce(t1.contiguous().view(t1.size), 0)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor | Tuple[Tensor, float]:
+        """Docstring"""
+        (shape_t1, dim) = ctx.saved_values
+        if dim is not None:
+            return grad_output.f.add_zip(
+                grad_output, zeros(shape_t1, grad_output.backend)
+            ), 0.0
+        else:
+            result = zeros(shape_t1, grad_output.backend)
+            result._tensor._storage[:] = grad_output.item()
+            return result
+
+
+class LT(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1)
+        return t1.f.lt_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Docstring"""
+        return (
+            grad_output.zeros(grad_output.shape),
+            grad_output.zeros(grad_output.shape),
+        )
+
+
+class EQ(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1)
+        return t1.f.eq_zip(t1, t2)
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Docstring"""
+        return (
+            grad_output.zeros(grad_output.shape),
+            grad_output.zeros(grad_output.shape),
+        )
+
+
+class IsClose(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1.shape)
+        return t1.f.is_close_zip(t1, t2)
+
+
+class Permute(Function):
+    @staticmethod
+    def forward(ctx: Context, t1: Tensor, dims: Tensor) -> Tensor:
+        """Docstring"""
+        ctx.save_for_backward(t1.shape)
+        permuted_dims = [int(dims[i]) for i in range(dims.size)]
+        return t1._new(t1._tensor.permute(*permuted_dims))
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
+        """Docstring"""
+        (t1_shape,) = ctx.saved_values
+        return (
+            minitorch.Tensor.make(
+                grad_output._tensor._storage, t1_shape, backend=grad_output.backend
+            ),
+            0.0,
+        )
 
 
 class View(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, shape: Tensor) -> Tensor:
+        """Docstring"""
         ctx.save_for_backward(a.shape)
-        assert a._tensor.is_contiguous(), "Must be contiguous to view"
-        shape2 = [int(shape[i]) for i in range(shape.size)]
         return minitorch.Tensor.make(
-            a._tensor._storage, tuple(shape2), backend=a.backend
+            a._tensor._storage,
+            tuple([int(shape[i]) for i in range(shape.size)]),
+            backend=a.backend,
         )
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
-        """Matrix Multiply backward (module 3)"""
-        (original,) = ctx.saved_values
+        """Docstring"""
+        (a_shape,) = ctx.saved_values
         return (
             minitorch.Tensor.make(
-                grad_output._tensor._storage, original, backend=grad_output.backend
+                grad_output._tensor._storage, a_shape, backend=grad_output.backend
             ),
             0.0,
         )
@@ -272,6 +449,7 @@ def tensor(
 def grad_central_difference(
     f: Any, *vals: Tensor, arg: int = 0, epsilon: float = 1e-6, ind: UserIndex
 ) -> float:
+    """Docstring"""
     x = vals[arg]
     up = zeros(x.shape)
     up[ind] = epsilon
