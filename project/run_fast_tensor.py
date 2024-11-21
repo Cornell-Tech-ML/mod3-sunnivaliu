@@ -6,21 +6,21 @@ import minitorch
 
 datasets = minitorch.datasets
 FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
-if numba.cuda.is_available():
+if numba.cuda.is_available(): # type: ignore
     GPUBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
-def default_log_fn(epoch, total_loss, correct, losses, time):
+def default_log_fn(epoch, total_loss, correct, losses, time): # type: ignore
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct, " time taken ", time)
 
 
-def RParam(*shape, backend):
+def RParam(*shape, backend): # type: ignore # type: ignore
     r = minitorch.rand(shape, backend=backend) - 0.5
     return minitorch.Parameter(r)
 
 
 class Network(minitorch.Module):
-    def __init__(self, hidden, backend):
+    def __init__(self, hidden, backend): # type: ignore
         super().__init__()
 
         # Submodules
@@ -28,14 +28,14 @@ class Network(minitorch.Module):
         self.layer2 = Linear(hidden, hidden, backend)
         self.layer3 = Linear(hidden, 1, backend)
 
-    def forward(self, x):
+    def forward(self, x): # type: ignore
         # TODO: Implement for Task 3.5.
         middle = self.layer1.forward(x).relu()
         end = self.layer2.forward(middle).relu()
         return self.layer3.forward(end).sigmoid()
 
 class Linear(minitorch.Module):
-    def __init__(self, in_size, out_size, backend):
+    def __init__(self, in_size, out_size, backend): # type: ignore
         super().__init__()
         self.weights = RParam(in_size, out_size, backend=backend)
         s = minitorch.zeros((out_size,), backend=backend)
@@ -43,24 +43,24 @@ class Linear(minitorch.Module):
         self.bias = minitorch.Parameter(s)
         self.out_size = out_size
 
-    def forward(self, x):
+    def forward(self, x): # type: ignore
         # TODO: Implement for Task 3.5.
         return x @ self.weights.value + self.bias.value
 
 
 class FastTrain:
-    def __init__(self, hidden_layers, backend=FastTensorBackend):
+    def __init__(self, hidden_layers, backend=FastTensorBackend): # type: ignore
         self.hidden_layers = hidden_layers
         self.model = Network(hidden_layers, backend)
         self.backend = backend
 
-    def run_one(self, x):
-        return self.model.forward(minitorch.tensor([x], backend=self.backend))
+    def run_one(self, x): # type: ignore
+        return self.model.forward(minitorch.tensor([x], backend=self.backend)) # type: ignore
 
-    def run_many(self, X):
-        return self.model.forward(minitorch.tensor(X, backend=self.backend))
+    def run_many(self, X): # type: ignore # type: ignore
+        return self.model.forward(minitorch.tensor(X, backend=self.backend)) # type: ignore # type: ignore
 
-    def train(self, data, learning_rate, max_epochs=500, log_fn=default_log_fn):
+    def train(self, data, learning_rate, max_epochs=500, log_fn=default_log_fn): # type: ignore
         self.model = Network(self.hidden_layers, self.backend)
         optim = minitorch.SGD(self.model.parameters(), learning_rate)
         BATCH = 10
@@ -76,8 +76,8 @@ class FastTrain:
 
             for i in range(0, len(X_shuf), BATCH):
                 optim.zero_grad()
-                X = minitorch.tensor(X_shuf[i : i + BATCH], backend=self.backend)
-                y = minitorch.tensor(y_shuf[i : i + BATCH], backend=self.backend)
+                X = minitorch.tensor(X_shuf[i : i + BATCH], backend=self.backend) # type: ignore
+                y = minitorch.tensor(y_shuf[i : i + BATCH], backend=self.backend) # type: ignore
                 # Forward
 
                 out = self.model.forward(X).view(y.shape[0])
@@ -95,10 +95,10 @@ class FastTrain:
             time_per_10.append(time.time() - start)
             # Logging
             if epoch % 10 == 0 or epoch == max_epochs:
-                X = minitorch.tensor(data.X, backend=self.backend)
-                y = minitorch.tensor(data.y, backend=self.backend)
+                X = minitorch.tensor(data.X, backend=self.backend) # type: ignore # type: ignore
+                y = minitorch.tensor(data.y, backend=self.backend) # type: ignore # type: ignore
                 out = self.model.forward(X).view(y.shape[0])
-                y2 = minitorch.tensor(data.y)
+                y2 = minitorch.tensor(data.y) # type: ignore
                 correct = int(((out.detach() > 0.5) == y2).sum()[0])
                 times.extend(time_per_10)
                 log_fn(epoch, total_loss, correct, losses, sum(time_per_10)/10)
@@ -131,5 +131,5 @@ if __name__ == "__main__":
     RATE = args.RATE
 
     FastTrain(
-        HIDDEN, backend=FastTensorBackend if args.BACKEND != "gpu" else GPUBackend
-    ).train(data, RATE)
+        HIDDEN, backend=FastTensorBackend if args.BACKEND != "gpu" else GPUBackend # type: ignore # type: ignore
+    ).train(data, RATE) # type: ignore

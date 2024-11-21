@@ -1,15 +1,10 @@
-"""
-Be sure you have minitorch installed in you Virtual Env.
->>> pip install -Ue .
-"""
-
 import minitorch
-import numpy as np
+# import numpy as np
 
 
 # Use this function to make a random parameter in
 # your module.
-def RParam(*shape):
+def RParam(*shape): # type: ignore
     r = 2 * (minitorch.rand(shape) - 0.5)
     return minitorch.Parameter(r)
 
@@ -17,14 +12,14 @@ def RParam(*shape):
 # TODO: Implement for Task 2.5.
 
 class Network(minitorch.Module):
-    def __init__(self, hidden_layers):
+    def __init__(self, hidden_layers): # type: ignore # type: ignore
         super().__init__()
         # Submodules
         self.layer1 = Linear(2, hidden_layers)
         self.layer2 = Linear(hidden_layers, hidden_layers)
         self.layer3 = Linear(hidden_layers, 1)
 
-    def forward(self, x):
+    def forward(self, x): # type: ignore
         # ASSIGN2.5
         h = self.layer1.forward(x).relu()
         h = self.layer2.forward(h).relu()
@@ -33,13 +28,13 @@ class Network(minitorch.Module):
 
 
 class Linear(minitorch.Module):
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size): # type: ignore
         super().__init__()
         self.weights = RParam(in_size, out_size)
         self.bias = RParam(out_size)
         self.out_size = out_size
 
-    def forward(self, x):
+    def forward(self, x): # type: ignore
         # ASSIGN2.5
         batch, in_size = x.shape
         return (
@@ -49,29 +44,29 @@ class Linear(minitorch.Module):
         # END ASSIGN2.5
 
 
-def default_log_fn(epoch, total_loss, correct, losses):
+def default_log_fn(epoch, total_loss, correct, losses): # type: ignore
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
 
 
 class TensorTrain:
-    def __init__(self, hidden_layers):
+    def __init__(self, hidden_layers): # type: ignore
         self.hidden_layers = hidden_layers
         self.model = Network(hidden_layers)
 
-    def run_one(self, x):
-        return self.model.forward(minitorch.tensor([x]))
+    def run_one(self, x): # type: ignore
+        return self.model.forward(minitorch.tensor([x])) # type: ignore
 
-    def run_many(self, X):
-        return self.model.forward(minitorch.tensor(X))
+    def run_many(self, X): # type: ignore
+        return self.model.forward(minitorch.tensor(X)) # type: ignore
 
-    def train(self, data, learning_rate, max_epochs=500, log_fn=default_log_fn):
+    def train(self, data, learning_rate, max_epochs=500, log_fn=default_log_fn): # type: ignore
         self.learning_rate = learning_rate
         self.max_epochs = max_epochs
         self.model = Network(self.hidden_layers)
         optim = minitorch.SGD(self.model.parameters(), learning_rate)
 
-        X = minitorch.tensor(data.X)
-        y = minitorch.tensor(data.y)
+        X = minitorch.tensor(data.X) # type: ignore
+        y = minitorch.tensor(data.y) # type: ignore
 
         losses = []
         for epoch in range(1, self.max_epochs + 1):
@@ -93,7 +88,7 @@ class TensorTrain:
 
             # Logging
             if epoch % 10 == 0 or epoch == max_epochs:
-                y2 = minitorch.tensor(data.y)
+                y2 = minitorch.tensor(data.y) # type: ignore
                 correct = int(((out.detach() > 0.5) == y2).sum()[0])
                 log_fn(epoch, total_loss, correct, losses)
 

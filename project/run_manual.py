@@ -13,13 +13,13 @@ class Network(minitorch.Module):
         super().__init__()
         self.linear = Linear(2, 1)
 
-    def forward(self, x):
+    def forward(self, x): # type: ignore
         y = self.linear(x)
         return minitorch.operators.sigmoid(y[0])
 
 
 class Linear(minitorch.Module):
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size): # type: ignore # type: ignore
         super().__init__()
         random.seed(100)
         self.weights = []
@@ -34,7 +34,7 @@ class Linear(minitorch.Module):
             b = self.add_parameter(f"bias_{j}", 2 * (random.random() - 0.5))
             self.bias.append(b)
 
-    def forward(self, inputs):
+    def forward(self, inputs): # type: ignore
         y = [b.value for b in self.bias]
         for i, x in enumerate(inputs):
             for j in range(len(y)):
@@ -43,8 +43,8 @@ class Linear(minitorch.Module):
 
 
 class ManualTrain:
-    def __init__(self, hidden_layers):
+    def __init__(self, hidden_layers): # type: ignore
         self.model = Network()
 
-    def run_one(self, x):
+    def run_one(self, x): # type: ignore
         return self.model.forward((x[0], x[1]))

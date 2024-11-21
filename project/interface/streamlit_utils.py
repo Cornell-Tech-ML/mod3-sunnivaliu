@@ -1,3 +1,5 @@
+# type: ignore
+
 import inspect
 
 import streamlit as st

@@ -1,3 +1,5 @@
+# type: ignore
+
 from numba import njit
 
 import minitorch
