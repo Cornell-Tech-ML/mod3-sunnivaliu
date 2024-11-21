@@ -1,4 +1,6 @@
-import graph_builder # type: ignore
+# type: ignore
+
+import graph_builder 
 import networkx as nx
 import plotly.graph_objects as go
 import streamlit as st
